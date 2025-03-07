@@ -142,7 +142,7 @@ fn get_all_svgs_from_path(path: &Path) -> Vec<PathBuf> {
         .filter_map(Result::ok)
         .map(|res| res.path())
         .filter(|path| {
-            path.is_file() && path.extension().unwrap_or_default().to_ascii_lowercase() == "svg"
+            path.is_file() && path.extension().unwrap_or_default().eq_ignore_ascii_case("svg")
         })
         .collect()
 }
