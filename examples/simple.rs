@@ -42,5 +42,5 @@ fn main() {
     draw_icon(&mut display, &Kde::new(Rgb888::CSS_GOLD), 7, 1, 20, 20);
 
     let output_settings = OutputSettingsBuilder::new().scale(1).build();
-    Window::new("Examplea", &output_settings).show_static(&display);
+    Window::new("Example", &output_settings).show_static(&display);
 }

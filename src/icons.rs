@@ -10,4 +10,4 @@ use embedded_graphics::prelude::*;
 #[allow(unused)]
 use static_assertions::const_assert;
 
-include!("../rendered/mod.rs");
+include!(concat!(env!("OUT_DIR"), "/rendered/mod.rs"));

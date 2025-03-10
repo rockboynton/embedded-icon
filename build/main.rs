@@ -5,28 +5,34 @@ use bit_vec::BitVec;
 use convert_case::{Case, Casing};
 use rayon::prelude::*;
 use resvg::tiny_skia::{Pixmap, Transform};
+use std::env;
 use std::fs;
 use std::fs::File;
+use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
 use usvg::{FitTo, Tree};
+use anyhow::{anyhow, Result};
 
 const ALPHA_CUTOFF: u8 = 0x60;
 const EXTENSION: &str = "bits";
 
-fn render_icon_to_bits(path: &Path, size: usize) -> BitVec<u8> {
+pub struct Module {
+    name: String,
+    svg_names: Vec<String>,
+    sizes: Vec<usize>,
+}
+
+fn render_icon_to_bits(path: &Path, size: usize) -> Result<BitVec<u8>> {
     assert!(size > 0, "BUG: Cannot render icon for size 0");
+    assert!(path.exists(), "No file at path {path:?}");
 
-    let size: u32 = size.try_into().unwrap();
-    if !path.exists() {
-        panic!("No file at path {path:?}");
-    }
-
-    let mut pixmap = Pixmap::new(size, size).unwrap();
+    let size: u32 = size.try_into()?;
+    let mut pixmap = Pixmap::new(size, size).ok_or(anyhow!("Could not construct pixmap"))?;
 
     resvg::render(
-        &Tree::from_str(&fs::read_to_string(path).unwrap(), &Default::default()).unwrap(),
+        &Tree::from_str(&fs::read_to_string(path)?, &Default::default())?,
         FitTo::Size(size, size),
         Transform::default(),
         pixmap.as_mut(),
@@ -41,17 +47,7 @@ fn render_icon_to_bits(path: &Path, size: usize) -> BitVec<u8> {
         .map(|alpha| alpha > ALPHA_CUTOFF)
         .collect();
 
-    result
-}
-
-const PROJECT_DIR: &str = env!("CARGO_MANIFEST_DIR");
-
-use std::io::Write;
-
-pub struct Module {
-    name: String,
-    svg_names: Vec<String>,
-    sizes: Vec<usize>,
+    Ok(result)
 }
 
 fn starts_with_digit(s: &str) -> bool {
@@ -59,7 +55,7 @@ fn starts_with_digit(s: &str) -> bool {
 }
 
 pub fn generate_mod(module: &Module, output_dir: &Path) {
-    let module_ident = quote::format_ident!("{}", module.name.clone());
+    let module_ident = quote::format_ident!("{}", &module.name);
     let file_name = output_dir.join("mod.rs");
     let names = module.svg_names.clone();
 
@@ -142,7 +138,11 @@ fn get_all_svgs_from_path(path: &Path) -> Vec<PathBuf> {
         .filter_map(Result::ok)
         .map(|res| res.path())
         .filter(|path| {
-            path.is_file() && path.extension().unwrap_or_default().eq_ignore_ascii_case("svg")
+            path.is_file()
+                && path
+                    .extension()
+                    .unwrap_or_default()
+                    .eq_ignore_ascii_case("svg")
         })
         .collect()
 }
@@ -172,7 +172,7 @@ fn create_library(library: &Library, output_dir: &Path) -> Module {
         fs::create_dir_all(&folder).unwrap();
 
         library.svgs.iter().for_each(|file| {
-            let bits = render_icon_to_bits(file.as_path(), *size);
+            let bits = render_icon_to_bits(file.as_path(), *size).unwrap();
             let mut target_file =
                 folder.join(file.as_path().file_stem().unwrap().to_str().unwrap());
             target_file.set_extension(EXTENSION);
@@ -194,40 +194,59 @@ fn create_library(library: &Library, output_dir: &Path) -> Module {
     }
 }
 
-fn main() {
+fn main() -> Result<()> {
     println!("cargo:rerun-if-changed=build/main.rs");
 
-    let project_dir = Path::new(PROJECT_DIR);
-    let libraries_dir = project_dir.join("build/libraries");
-    let rendered_dir = project_dir.join("rendered");
-    let default_sizes = vec![12, 18, 24, 32, 48, 96, 144];
+    let project_dir = env::var("CARGO_MANIFEST_DIR")?;
+    let project_dir = Path::new(&project_dir);
+    let out_dir = env::var("OUT_DIR")?;
+    let out_dir = Path::new(&out_dir);
 
-    if let Err(error) = Command::new("git")
+    let libraries_dir = project_dir.join("build").join("libraries");
+    let rendered_dir = out_dir.join("rendered");
+    let default_sizes = vec![
+        #[cfg(feature = "12px")]
+        12,
+        #[cfg(feature = "18px")]
+        18,
+        #[cfg(feature = "24px")]
+        24,
+        #[cfg(feature = "32px")]
+        32,
+        #[cfg(feature = "48px")]
+        48,
+        #[cfg(feature = "96px")]
+        96,
+        #[cfg(feature = "144px")]
+        144,
+    ];
+
+    Command::new("git")
         .arg("submodule")
         .arg("update")
         .arg("--init")
-        .current_dir(project_dir)
-        .status()
-    {
-        eprintln!("{error}");
-    }
+        .status()?;
 
     let libraries = vec![
+        #[cfg(feature = "iconoir")]
         Library {
             name: "iconoir".into(),
             svgs: get_all_svgs_from_path(&libraries_dir.join("iconoir/icons")),
             sizes: default_sizes.clone(),
         },
+        #[cfg(feature = "ionic")]
         Library {
             name: "ionic".into(),
             svgs: get_all_svgs_from_path(&libraries_dir.join("ionicons/src/svg")),
             sizes: default_sizes.clone(),
         },
+        #[cfg(feature = "mdi")]
         Library {
             name: "mdi".into(),
             svgs: get_all_svgs_from_path(&libraries_dir.join("MaterialDesign/svg")),
             sizes: default_sizes.clone(),
         },
+        #[cfg(feature = "simple")]
         Library {
             name: "simple".into(),
             svgs: get_all_svgs_from_path(&libraries_dir.join("simple-icons/icons")),
@@ -241,4 +260,6 @@ fn main() {
         generate_mod(&module, output);
     });
     generate_main_mod(&libraries, &rendered_dir);
+
+    Ok(())
 }

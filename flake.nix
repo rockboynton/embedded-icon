@@ -17,6 +17,10 @@
         buildInputs = [
           pkgs.rust-bin.stable.latest.default
           pkgs.rust-analyzer
+          pkgs.SDL2
+          pkgs.pkg-config
+          pkgs.cargo-expand
+
         ];
       };
     };
