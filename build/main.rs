@@ -11,7 +11,6 @@ use std::fs::File;
 use std::io::Write;
 use std::path::Path;
 use std::path::PathBuf;
-use std::process::Command;
 use usvg::{FitTo, Tree};
 use anyhow::{anyhow, Result};
 
@@ -199,10 +198,11 @@ fn main() -> Result<()> {
 
     let project_dir = env::var("CARGO_MANIFEST_DIR")?;
     let project_dir = Path::new(&project_dir);
+
     let out_dir = env::var("OUT_DIR")?;
     let out_dir = Path::new(&out_dir);
 
-    let libraries_dir = project_dir.join("build").join("libraries");
+    let libraries_dir = project_dir.join("vendor");
     let rendered_dir = out_dir.join("rendered");
     let default_sizes = vec![
         #[cfg(feature = "12px")]
@@ -220,12 +220,6 @@ fn main() -> Result<()> {
         #[cfg(feature = "144px")]
         144,
     ];
-
-    Command::new("git")
-        .arg("submodule")
-        .arg("update")
-        .arg("--init")
-        .status()?;
 
     let libraries = vec![
         #[cfg(feature = "iconoir")]

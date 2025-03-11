@@ -16,7 +16,7 @@
 //! use embedded_icon::prelude::*;
 //!
 //! // Create an icon
-//! let icon = icons::size24px::Download::new(BinaryColor::On);
+//! let icon = icons::mdi::size24px::Download::new(BinaryColor::On);
 //!
 //! // Wrap it in an embedded_graphics image
 //! let image = Image::new(&icon, Point::zero());

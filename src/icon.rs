@@ -29,9 +29,9 @@ macro_rules! include_icon {
 /// # use embedded_icon::Icon;
 /// # use embedded_icon::prelude::*;
 /// // using constructors on icons (recommended)
-/// let icon = icons::size24px::actions::Download::new(BinaryColor::On);
+/// let icon = icons::mdi::size24px::Download::new(BinaryColor::On);
 /// // using types
-/// let icon: Icon<_, icons::size24px::actions::Download> = Icon::new(BinaryColor::On);
+/// let icon: Icon<_, icons::mdi::size24px::Download> = Icon::new(BinaryColor::On);
 /// ```
 /// Both result in the same icon (`Icon<COLOR, ICON>`). Use whichever you prefer.
 ///
@@ -49,7 +49,7 @@ macro_rules! include_icon {
 /// use embedded_icon::prelude::*;
 ///
 /// // Create an icon
-/// let icon = icons::size24px::actions::Download::new(BinaryColor::On);
+/// let icon = icons::mdi::size24px::Download::new(BinaryColor::On);
 ///
 /// // Wrap it in an embedded_graphics image
 /// let image = Image::new(&icon, Point::zero());
